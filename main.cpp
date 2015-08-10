@@ -45,19 +45,19 @@ inline void sobel(const QImage &image,
             int x_m1 = x < 1? x: x - 1;
             int x_p1 = x >= image.width() - 1? x: x + 1;
 
-            int gradX = grayLine_p1[x_m1]
-                      + 2 * grayLine_p1[x]
-                      + grayLine_p1[x_p1]
-                      - grayLine_m1[x_m1]
-                      - 2 * grayLine_m1[x]
-                      - grayLine_m1[x_p1];
-
-            int gradY = grayLine_m1[x_p1]
+            int gradX = grayLine_m1[x_p1]
                       + 2 * grayLine[x_p1]
                       + grayLine_p1[x_p1]
                       - grayLine_m1[x_m1]
                       - 2 * grayLine[x_m1]
                       - grayLine_p1[x_m1];
+
+            int gradY = grayLine_p1[x_m1]
+                      + 2 * grayLine_p1[x]
+                      + grayLine_p1[x_p1]
+                      - grayLine_m1[x_m1]
+                      - 2 * grayLine_m1[x]
+                      - grayLine_m1[x_p1];
 
             gradientLine[x] = qAbs(gradX) + qAbs(gradY);
 
@@ -71,23 +71,38 @@ inline void sobel(const QImage &image,
              *
              * dir 1
              *
+             * x x /
+             * x / x
+             * / x x
+             *
+             * dir 2
+             *
              * \ x x
              * x \ x
              * x x \
              *
-             * dir 2
-             *
-             * x | x
-             * x | x
-             * x | x
-             *
              * dir 3
              *
-             * x x /
-             * x / x
-             * / x x
+             * x | x
+             * x | x
+             * x | x
              */
-            directionLine[x] = int(round(4 * atan2(gradY, gradX) / M_PI)) % 4;
+            if (gradX == 0 && gradY == 0)
+                directionLine[x] = 0;
+            else if (gradX == 0)
+                directionLine[x] = 3;
+            else {
+                qreal a = 180. * atan(qreal(gradY) / gradX) / M_PI;
+
+                if (a >= -22.5 && a < 22.5)
+                    directionLine[x] = 0;
+                else if (a >= 22.5 && a < 67.5)
+                    directionLine[x] = 1;
+                else if (a >= -67.5 && a < -22.5)
+                    directionLine[x] = 2;
+                else
+                    directionLine[x] = 3;
+            }
         }
     }
 }
@@ -118,38 +133,38 @@ inline QVector<int> thining(int width, int height,
                  * - - -
                  * x x x
                  */
-                if (gradientLine[x] < gradientLine[x_p1]
-                    || gradientLine[x] < gradientLine[x_m1])
+                if (gradientLine[x] < gradientLine[x_m1]
+                    || gradientLine[x] < gradientLine[x_p1])
                     pixel = 0;
                 else
                     pixel = gradientLine[x];
             } else if (direction == 1) {
-                /* \ x x
-                 * x \ x
-                 * x x \
-                 */
-                if (gradientLine[x] < gradientLine_p1[x_p1]
-                    || gradientLine[x] < gradientLine_m1[x_m1])
-                    pixel = 0;
-                else
-                    pixel = gradientLine[x];
-            } else if (direction == 2) {
-                /* x | x
-                 * x | x
-                 * x | x
-                 */
-                if (gradientLine[x] < gradientLine_p1[x]
-                    || gradientLine[x] < gradientLine_m1[x])
-                    pixel = 0;
-                else
-                    pixel = gradientLine[x];
-            } else {
                 /* x x /
                  * x / x
                  * / x x
                  */
-                if (gradientLine[x] < gradientLine_p1[x_m1]
-                    || gradientLine[x] < gradientLine_m1[x_p1])
+                if (gradientLine[x] < gradientLine_m1[x_p1]
+                    || gradientLine[x] < gradientLine_p1[x_m1])
+                    pixel = 0;
+                else
+                    pixel = gradientLine[x];
+            } else if (direction == 2) {
+                /* \ x x
+                 * x \ x
+                 * x x \
+                 */
+                if (gradientLine[x] < gradientLine_m1[x_m1]
+                    || gradientLine[x] < gradientLine_p1[x_p1])
+                    pixel = 0;
+                else
+                    pixel = gradientLine[x];
+            } else {
+                /* x | x
+                 * x | x
+                 * x | x
+                 */
+                if (gradientLine[x] < gradientLine_m1[x]
+                    || gradientLine[x] < gradientLine_p1[x])
                     pixel = 0;
                 else
                     pixel = gradientLine[x];
@@ -239,7 +254,7 @@ int main(int argc, char *argv[])
     sobel(inImage, gradient, direction);
     QVector<int> thinned = thining(inImage.width(), inImage.height(),
                                    gradient, direction);
-    QVector<int> thresholded = threshold(40, 90, thinned);
+    QVector<int> thresholded = threshold(75, 150, thinned);
     QVector<int> canny = hysteresis(inImage.width(), inImage.height(),
                                     thresholded);
 
@@ -249,7 +264,7 @@ int main(int argc, char *argv[])
     int size = inImage.width() * inImage.height();
 
     for (int i = 0; i < size; i++)
-        oImg[i] = iImg[i];
+        oImg[i] = qBound(0, iImg[i], 255);
 
     outImage.save("canny.png");
 
