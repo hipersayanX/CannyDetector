@@ -15,7 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  * Email   : hipersayan DOT x AT gmail DOT com
- * Web-Site: http://github.com/hipersayanX/DenoiseFilters
+ * Web-Site: http://github.com/hipersayanX/CannyDetector
  */
 
 #include <iostream>
@@ -52,12 +52,12 @@ inline void sobel(const QImage &image,
                       - 2 * grayLine[x_m1]
                       - grayLine_p1[x_m1];
 
-            int gradY = grayLine_p1[x_m1]
-                      + 2 * grayLine_p1[x]
-                      + grayLine_p1[x_p1]
-                      - grayLine_m1[x_m1]
-                      - 2 * grayLine_m1[x]
-                      - grayLine_m1[x_p1];
+            int gradY = grayLine_m1[x_m1]
+                      + 2 * grayLine_m1[x]
+                      + grayLine_m1[x_p1]
+                      - grayLine_p1[x_m1]
+                      - 2 * grayLine_p1[x]
+                      - grayLine_p1[x_p1];
 
             gradientLine[x] = qAbs(gradX) + qAbs(gradY);
 
@@ -107,9 +107,9 @@ inline void sobel(const QImage &image,
     }
 }
 
-inline QVector<int> thining(int width, int height,
-                            const QVector<int> &gradient,
-                            const QVector<int> &direction)
+inline QVector<int> thinning(int width, int height,
+                             const QVector<int> &gradient,
+                             const QVector<int> &direction)
 {
     QVector<int> thinned(gradient.size());
 
@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
     QVector<int> gradient;
     QVector<int> direction;
     sobel(inImage, gradient, direction);
-    QVector<int> thinned = thining(inImage.width(), inImage.height(),
+    QVector<int> thinned = thinning(inImage.width(), inImage.height(),
                                    gradient, direction);
     QVector<int> thresholded = threshold(75, 150, thinned);
     QVector<int> canny = hysteresis(inImage.width(), inImage.height(),
